@@ -22,6 +22,7 @@ import Swal from "sweetalert2";
 import { twMerge } from "tailwind-merge";
 import { createInitialStateStudentReducer, studentReducer } from "./reducer";
 import { DebouncedInput } from "@/components/inputs/debounced";
+import { rankItem } from "@tanstack/match-sorter-utils";
 
 const getData = async () => {
   const res = await getAllStudents();
@@ -53,6 +54,21 @@ const StudentsPage = () => {
   const [universityFilters, setUniversityFilters] = useState([]);
 
   const studentsColumnHelper = createColumnHelper();
+
+  const fuzzyFilter = (row, columnId, value, addMeta) => {
+    // Rank the item
+    const itemRank = value
+      .map((item) => rankItem(row.getValue(columnId).name, item))
+      .sort((a, b) => (a.passed ? -1 : 1))[0];
+
+    // Store the itemRank info
+    addMeta({
+      itemRank,
+    });
+
+    // Return if the item should be filtered in/out
+    return itemRank.passed;
+  };
   const studentsColumn = [
     studentsColumnHelper.display({
       id: "check",
@@ -80,6 +96,7 @@ const StudentsPage = () => {
         }
         return "";
       },
+      filterFn: fuzzyFilter,
     }),
     studentsColumnHelper.display({
       id: "actions",
@@ -211,6 +228,7 @@ const StudentsPage = () => {
             <Dropdown.Item key={item.uuid}>
               <Checkbox
                 value={item.name}
+                checked={universityFilters.includes(item.name)}
                 className="me-2"
                 onChange={handleOnChangeFilterUniversities}
               />

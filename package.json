@@ -23,6 +23,7 @@
     "react-dom": "^18"
   },
   "devDependencies": {
+    "@tanstack/match-sorter-utils": "^8.11.7",
     "autoprefixer": "^10.0.1",
     "postcss": "^8",
     "prisma": "^5.8.1",
