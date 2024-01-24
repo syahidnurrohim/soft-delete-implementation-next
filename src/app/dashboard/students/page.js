@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  bulkDeleteStudentById,
   deleteStudentById,
   getAllStudents,
   getAllUniversities,
@@ -37,7 +38,7 @@ import { twMerge } from "tailwind-merge";
 import { DebouncedInput } from "@/components/inputs/debounced";
 import { rankItem } from "@tanstack/match-sorter-utils";
 import { LoadingContext, useLoadingContext } from "@/context/DashboardContext";
-import { ModalTambah } from "./modal";
+import { ModalEdit, ModalTambah } from "./modal";
 
 const getData = async () => {
   const res = await getAllStudents();
@@ -62,9 +63,12 @@ const StudentsPage = () => {
   const [sorting, setSorting] = useState([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilter] = useState([]);
+  const [rowSelection, setRowSelection] = useState({});
   const [universityFilters, setUniversityFilters] = useState([]);
   const [totalRows, setTotalRows] = useState(0);
   const [openModalTambah, setOpenModalTambah] = useState(false);
+  const [openModalEdit, setOpenModalEdit] = useState(false);
+  const [editData, setEditData] = useState({});
   const [{ pageIndex, pageSize }, setPagination] = useState({
     pageIndex: 0,
     pageSize: 5,
@@ -97,8 +101,25 @@ const StudentsPage = () => {
   const studentsColumn = [
     studentsColumnHelper.display({
       id: "check",
-      header: () => <Checkbox />,
-      cell: (props) => <Checkbox />,
+      header: ({ table }) => (
+        <Checkbox
+          {...{
+            checked: table.getIsAllRowsSelected(),
+            indeterminate: table.getIsSomeRowsSelected(),
+            onChange: table.getToggleAllRowsSelectedHandler(),
+          }}
+        />
+      ),
+      cell: ({ row, ...props }) => (
+        <Checkbox
+          {...{
+            checked: row.getIsSelected(),
+            disabled: !row.getCanSelect(),
+            indeterminate: row.getIsSomeSelected(),
+            onChange: row.getToggleSelectedHandler(),
+          }}
+        />
+      ),
       enableResizing: false,
       maxSize: 1,
       enableSorting: false,
@@ -135,10 +156,13 @@ const StudentsPage = () => {
     data: students,
     columns: studentsColumn,
     state: {
+      rowSelection,
       sorting,
       globalFilter,
       columnFilters,
     },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onColumnFiltersChange: setColumnFilter,
@@ -201,7 +225,10 @@ const StudentsPage = () => {
     );
   };
 
-  const handleOnClickEditStudent = (data) => {};
+  const handleOnClickEditStudent = (data) => {
+    setEditData(data);
+    setOpenModalEdit(true);
+  };
 
   const handleOnClickDeleteStudent = (data) => {
     Swal.fire({
@@ -237,6 +264,42 @@ const StudentsPage = () => {
     setOpenModalTambah(true);
   };
 
+  const handleOnClickBulkDelete = (e) => {
+    const bulkIdToDelete = table.getSelectedRowModel().rows.map((row) => {
+      return row.original.uuid;
+    });
+    Swal.fire({
+      title: "Apakah anda yakin?",
+      text:
+        "Sebanyak " +
+        bulkIdToDelete.length +
+        " data mahasiswa akan dihapus dari aplikasi!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Ya, hapus!",
+      cancelButtonText: "Tidak",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        setFullPageLoading(true);
+        const res = await bulkDeleteStudentById(bulkIdToDelete);
+        setFullPageLoading(false);
+        if (!res.ok) {
+          Swal.fire("Error", res.statusText, "error");
+          return;
+        }
+        const json = await res.json();
+        if (json.status == "success") {
+          setStudents(await getData());
+          Swal.fire("Success", json.message, "success");
+        } else {
+          Swal.fire("Error", json.message, "error");
+        }
+      }
+    });
+  };
+
   const handleOnChangeFilterUniversities = (e) => {
     if (e.target.checked) {
       setUniversityFilters(universityFilters.concat(e.target.value));
@@ -248,7 +311,25 @@ const StudentsPage = () => {
   };
   return (
     <div className="relative overflow-x-auto p-4">
-      <ModalTambah {...{ openModalTambah, setOpenModalTambah, universities }} />
+      <ModalTambah
+        {...{
+          openModalTambah,
+          setOpenModalTambah,
+          universities,
+          setStudents,
+          getData,
+        }}
+      />
+      <ModalEdit
+        {...{
+          openModalEdit,
+          setOpenModalEdit,
+          universities,
+          setStudents,
+          getData,
+          initialData: editData,
+        }}
+      />
       <h5 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
         Students
       </h5>
@@ -297,6 +378,15 @@ const StudentsPage = () => {
           ))}
         </Dropdown>
         <div className="flex-grow"></div>
+        <Button
+          outline
+          gradientDuoTone="pinkToOrange"
+          className="float-end"
+          onClick={(e) => handleOnClickBulkDelete(e)}
+        >
+          <HiTrash className="me-2" />
+          Bulk Delete
+        </Button>
         <Button
           color="blue"
           className="p-0 float-end"
