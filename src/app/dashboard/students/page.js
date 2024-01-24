@@ -16,6 +16,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Button, Checkbox, Dropdown, Select, Spinner } from "flowbite-react";
+import ExcelJS from "exceljs";
 import {
   useContext,
   useEffect,
@@ -25,6 +26,7 @@ import {
   useState,
 } from "react";
 import {
+  HiDownload,
   HiPlus,
   HiTrash,
   HiOutlineSearch,
@@ -39,6 +41,7 @@ import { DebouncedInput } from "@/components/inputs/debounced";
 import { rankItem } from "@tanstack/match-sorter-utils";
 import { LoadingContext, useLoadingContext } from "@/context/DashboardContext";
 import { ModalEdit, ModalTambah } from "./modal";
+import { saveAs } from "file-saver";
 
 const getData = async () => {
   const res = await getAllStudents();
@@ -264,6 +267,51 @@ const StudentsPage = () => {
     setOpenModalTambah(true);
   };
 
+  const handleOnClickExportExcel = (e) => {
+    var ExcelJSWorkbook = new ExcelJS.Workbook();
+    var worksheet = ExcelJSWorkbook.addWorksheet("Sheet 1");
+    var headers = {
+      student_id: "NIM",
+      name: "Nama",
+      university_id: "Universitas",
+      address: "Alamat",
+    };
+    var columns = ["student_id", "name", "university_id", "address"];
+
+    var headerRow = worksheet.addRow();
+    headerRow.font = { bold: true };
+
+    columns.forEach((col, i) => {
+      worksheet.getColumn(i + 1).width = 20;
+      let cell = headerRow.getCell(i + 1);
+      cell.value = headers[col];
+    });
+
+    worksheet.properties.outlineProperties = {
+      summaryBelow: false,
+      summaryRight: false,
+    };
+
+    table.getFilteredRowModel().rows.forEach(function (row) {
+      var dataRow = worksheet.addRow();
+      columns.forEach((col, i) => {
+        let cell = dataRow.getCell(i + 1);
+        if (col == "university_id") {
+          cell.value = row.original.university.name;
+        } else {
+          cell.value = row.original[col];
+        }
+      });
+    });
+
+    ExcelJSWorkbook.xlsx.writeBuffer().then(function (buffer) {
+      saveAs(
+        new Blob([buffer], { type: "application/octet-stream" }),
+        `Students.xlsx`,
+      );
+    });
+  };
+
   const handleOnClickBulkDelete = (e) => {
     const bulkIdToDelete = table.getSelectedRowModel().rows.map((row) => {
       return row.original.uuid;
@@ -377,6 +425,14 @@ const StudentsPage = () => {
             </Dropdown.Item>
           ))}
         </Dropdown>
+        <Button
+          color="green"
+          className="p-0 float-end"
+          onClick={(e) => handleOnClickExportExcel(e)}
+        >
+          <HiDownload className="me-2" />
+          Export Excel
+        </Button>
         <div className="flex-grow"></div>
         <Button
           outline

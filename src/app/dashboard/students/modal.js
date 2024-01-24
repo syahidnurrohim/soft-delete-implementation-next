@@ -44,6 +44,7 @@ export const ModalTambah = ({
         }
         const json = await res.json();
         if (json.status == "success") {
+          setPostData({});
           setOpenModalTambah(false);
           setStudents(await getData());
           Swal.fire("Success", json.message, "success");
@@ -53,6 +54,7 @@ export const ModalTambah = ({
       }
     });
   };
+
   return (
     <Modal show={openModalTambah} onClose={() => setOpenModalTambah(false)}>
       <Modal.Header>Tambah Student</Modal.Header>
@@ -91,6 +93,9 @@ export const ModalTambah = ({
               id="university_id"
               required
             >
+              <option value="" key="">
+                Pilih University
+              </option>
               {universities.map((item) => (
                 <option value={item.uuid} key={item.uuid}>
                   {item.name}

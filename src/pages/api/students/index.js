@@ -2,6 +2,18 @@ import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
   if (req.method === "POST") {
+    const filter = ["student_id", "name", "university_id", "address"];
+    const filtered = filter.filter((prop) => {
+      return (
+        !Object.keys(req.body.data).includes(prop) || req.body.data[prop] == ""
+      );
+    });
+    if (filtered.length > 0) {
+      return res.json({
+        status: "error",
+        message: filtered[0] + " wajib di isi",
+      });
+    }
     await prisma.student.create({
       data: req.body.data,
     });
