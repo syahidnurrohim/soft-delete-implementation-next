@@ -25,6 +25,7 @@
   "devDependencies": {
     "@tanstack/match-sorter-utils": "^8.11.7",
     "autoprefixer": "^10.0.1",
+    "faker": "^6.6.6",
     "postcss": "^8",
     "prisma": "^5.8.1",
     "sweetalert2": "^11.10.3",

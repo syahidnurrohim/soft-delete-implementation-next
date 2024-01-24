@@ -1,6 +1,6 @@
 import { useSidebarContext } from "@/context/SidebarContext";
 import { Sidebar } from "flowbite-react";
-import { HiChartPie, HiAcademicCap } from "react-icons/hi";
+import { HiChartPie, HiAcademicCap, HiOutlineDatabase } from "react-icons/hi";
 import { twMerge } from "tailwind-merge";
 
 export const DashboardSidebar = function () {
@@ -23,6 +23,11 @@ export const DashboardSidebar = function () {
           </Sidebar.Item>
           <Sidebar.Item href="/dashboard/students" icon={HiAcademicCap}>
             Students
+          </Sidebar.Item>
+        </Sidebar.ItemGroup>
+        <Sidebar.ItemGroup>
+          <Sidebar.Item href="/dashboard/restore" icon={HiOutlineDatabase}>
+            Restore Data
           </Sidebar.Item>
         </Sidebar.ItemGroup>
       </Sidebar.Items>

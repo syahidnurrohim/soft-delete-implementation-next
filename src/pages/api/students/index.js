@@ -5,6 +5,11 @@ export default async function handler(req, res) {
     // Process a POST request
   } else {
     const students = await prisma.student.findMany({
+      orderBy: [
+        {
+          student_id: "asc",
+        },
+      ],
       include: {
         university: true,
       },

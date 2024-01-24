@@ -1,11 +1,6 @@
 "use client";
 
 import {
-  deleteStudentById,
-  getAllStudents,
-  getAllUniversities,
-} from "@/lib/api";
-import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
@@ -14,41 +9,24 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Button, Checkbox, Dropdown, Select, Spinner } from "flowbite-react";
+import { Button, Checkbox, Dropdown, Select } from "flowbite-react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useReducer,
-  useState,
-} from "react";
-import {
-  HiPlus,
-  HiTrash,
   HiOutlineSearch,
   HiFilter,
   HiChevronDown,
   HiChevronUp,
-  HiPencil,
+  HiOutlineDatabase,
 } from "react-icons/hi";
 import Swal from "sweetalert2";
 import { twMerge } from "tailwind-merge";
 import { DebouncedInput } from "@/components/inputs/debounced";
 import { rankItem } from "@tanstack/match-sorter-utils";
-import { LoadingContext, useLoadingContext } from "@/context/DashboardContext";
-import { ModalTambah } from "./modal";
+import { useLoadingContext } from "@/context/DashboardContext";
+import { getAllBins, postRestoreBin } from "@/lib/api";
 
 const getData = async () => {
-  const res = await getAllStudents();
-  if (!res.ok) {
-    return [];
-  }
-  return (await res.json()).data;
-};
-
-const getDataUniversities = async () => {
-  const res = await getAllUniversities();
+  const res = await getAllBins();
   if (!res.ok) {
     return [];
   }
@@ -56,15 +34,13 @@ const getDataUniversities = async () => {
 };
 
 const StudentsPage = () => {
-  const [students, setStudents] = useState([]);
-  const [universities, setUniversities] = useState([]);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sorting, setSorting] = useState([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilter] = useState([]);
-  const [universityFilters, setUniversityFilters] = useState([]);
+  const [tableFilters, setTableFilters] = useState([]);
   const [totalRows, setTotalRows] = useState(0);
-  const [openModalTambah, setOpenModalTambah] = useState(false);
   const [{ pageIndex, pageSize }, setPagination] = useState({
     pageIndex: 0,
     pageSize: 5,
@@ -78,7 +54,7 @@ const StudentsPage = () => {
   );
   const { setLoading: setFullPageLoading } = useLoadingContext();
 
-  const studentsColumnHelper = createColumnHelper();
+  const tableColumnHelper = createColumnHelper();
 
   const fuzzyFilter = (row, columnId, value, addMeta) => {
     // Rank the item
@@ -94,36 +70,20 @@ const StudentsPage = () => {
     // Return if the item should be filtered in/out
     return itemRank.passed;
   };
-  const studentsColumn = [
-    studentsColumnHelper.display({
-      id: "check",
-      header: () => <Checkbox />,
-      cell: (props) => <Checkbox />,
-      enableResizing: false,
-      maxSize: 1,
-      enableSorting: false,
-    }),
-    studentsColumnHelper.accessor("student_id", {
-      header: () => "NIM",
+  const tableColumns = [
+    tableColumnHelper.accessor("table_name", {
+      header: () => "Tabel Sumber",
       cell: (info) => info.getValue(),
     }),
-    studentsColumnHelper.accessor("name", {
-      header: () => "Nama",
+    tableColumnHelper.accessor("row", {
+      header: () => "Data",
+      cell: (info) => JSON.stringify(info.getValue()),
+    }),
+    tableColumnHelper.accessor("date", {
+      header: () => "Tanggal Hapus",
       cell: (info) => info.getValue(),
     }),
-    studentsColumnHelper.accessor((row) => row.university, {
-      header: () => "Asal Universitas",
-      id: "university",
-      cell: (info) => {
-        var univ = info.getValue();
-        if (univ.name) {
-          return univ.name;
-        }
-        return "";
-      },
-      filterFn: fuzzyFilter,
-    }),
-    studentsColumnHelper.display({
+    tableColumnHelper.display({
       id: "actions",
       header: () => "Aksi",
       cell: (props) => <RowActions row={props.row} />,
@@ -132,8 +92,8 @@ const StudentsPage = () => {
   ];
 
   const table = useReactTable({
-    data: students,
-    columns: studentsColumn,
+    data: data,
+    columns: tableColumns,
     state: {
       sorting,
       globalFilter,
@@ -151,23 +111,10 @@ const StudentsPage = () => {
 
   useEffect(() => {
     (async () => {
-      setStudents(await getData());
-      setUniversities(await getDataUniversities());
+      setData(await getData());
       setLoading(false);
     })();
   }, []);
-
-  useEffect(() => {
-    var column = table
-      .getAllColumns()
-      .filter((item) => item.id == "university")[0];
-    if (!column) return;
-    if (universityFilters.length) {
-      column.setFilterValue(universityFilters);
-    } else {
-      column.setFilterValue("");
-    }
-  }, [universityFilters]);
 
   useEffect(() => {
     table.setPagination(pagination);
@@ -180,43 +127,31 @@ const StudentsPage = () => {
   const RowActions = ({ row }) => {
     const data = row.original;
     return (
-      <div className="flex gap-2">
-        <Button
-          className="px-0"
-          color="purple"
-          size="xs"
-          onClick={(e) => handleOnClickEditStudent(data)}
-        >
-          <HiPencil className="h-4 w-4" />
-        </Button>
-        <Button
-          className="px-0"
-          color="failure"
-          size="xs"
-          onClick={(e) => handleOnClickDeleteStudent(data)}
-        >
-          <HiTrash className="h-4 w-4" />
-        </Button>
-      </div>
+      <Button
+        className="px-1"
+        color="blue"
+        size="xs"
+        onClick={(e) => handleOnClickRestoreData(data)}
+      >
+        <HiOutlineDatabase className="h-4 w-4" />
+      </Button>
     );
   };
 
-  const handleOnClickEditStudent = (data) => {};
-
-  const handleOnClickDeleteStudent = (data) => {
+  const handleOnClickRestoreData = (data) => {
     Swal.fire({
       title: "Apakah anda yakin?",
-      text: "Data mahasiswa " + data.name + " akan dihapus dari aplikasi!",
+      text: "Data akan restore!",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#3085d6",
       cancelButtonColor: "#d33",
-      confirmButtonText: "Ya, hapus!",
+      confirmButtonText: "Ya, restore!",
       cancelButtonText: "Tidak",
     }).then(async (result) => {
       if (result.isConfirmed) {
         setFullPageLoading(true);
-        const res = await deleteStudentById(data.uuid);
+        const res = await postRestoreBin(data.uuid);
         setFullPageLoading(false);
         if (!res.ok) {
           Swal.fire("Error", res.statusText, "error");
@@ -224,7 +159,7 @@ const StudentsPage = () => {
         }
         const json = await res.json();
         if (json.status == "success") {
-          setStudents(await getData());
+          setData(await getData());
           Swal.fire("Success", json.message, "success");
         } else {
           Swal.fire("Error", json.message, "error");
@@ -233,24 +168,10 @@ const StudentsPage = () => {
     });
   };
 
-  const handleOnClickOpenModalTambah = (e) => {
-    setOpenModalTambah(true);
-  };
-
-  const handleOnChangeFilterUniversities = (e) => {
-    if (e.target.checked) {
-      setUniversityFilters(universityFilters.concat(e.target.value));
-    } else {
-      setUniversityFilters(
-        universityFilters.filter((item) => item != e.target.value),
-      );
-    }
-  };
   return (
     <div className="relative overflow-x-auto p-4">
-      <ModalTambah {...{ openModalTambah, setOpenModalTambah, universities }} />
       <h5 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-        Students
+        Bins
       </h5>
       <div className="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4 py-4">
         <div className="w-full md:w-1/4">
@@ -271,40 +192,6 @@ const StudentsPage = () => {
             </div>
           </form>
         </div>
-        <Dropdown
-          dismissOnClick={false}
-          renderTrigger={({ arrowIcon }) => (
-            <button className="w-full md:w-auto flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary-700 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
-              <HiFilter className="me-2" />
-              Filter
-              <HiChevronDown className={arrowIcon} />
-            </button>
-          )}
-        >
-          <Dropdown.Header>
-            <span className="block text-sm">Pilih Universitas</span>
-          </Dropdown.Header>
-          {universities.map((item) => (
-            <Dropdown.Item key={item.uuid}>
-              <Checkbox
-                value={item.name}
-                checked={universityFilters.includes(item.name)}
-                className="me-2"
-                onChange={handleOnChangeFilterUniversities}
-              />
-              {item.name}
-            </Dropdown.Item>
-          ))}
-        </Dropdown>
-        <div className="flex-grow"></div>
-        <Button
-          color="blue"
-          className="p-0 float-end"
-          onClick={(e) => handleOnClickOpenModalTambah(e)}
-        >
-          <HiPlus className="me-2" />
-          Add Student
-        </Button>
       </div>
       <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">

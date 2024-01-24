@@ -27,7 +27,8 @@ model Student {
 }
 
 model Bin {
-  uuid       String @id @default(uuid())
+  uuid       String   @id @default(uuid())
   table_name String
-  row        Json   @db.JsonB
+  row        Json     @db.JsonB
+  date       DateTime @default(now())
 }
