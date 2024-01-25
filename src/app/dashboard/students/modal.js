@@ -46,8 +46,8 @@ export const ModalTambah = ({
         if (json.status == "success") {
           setPostData({});
           setOpenModalTambah(false);
-          setStudents(await getData());
           Swal.fire("Success", json.message, "success");
+          setStudents(await getData());
         } else {
           Swal.fire("Error", json.message, "error");
         }
@@ -165,8 +165,8 @@ export const ModalEdit = ({
         const json = await res.json();
         if (json.status == "success") {
           setOpenModalEdit(false);
-          setStudents(await getData());
           Swal.fire("Success", json.message, "success");
+          setStudents(await getData());
         } else {
           Swal.fire("Error", json.message, "error");
         }

@@ -1,4 +1,6 @@
-const BASE_URL = "http://localhost:3000";
+import { getBaseURL } from "@/helpers/url";
+
+const BASE_URL = getBaseURL();
 
 export const getAllStudents = () => {
   return fetch(BASE_URL + "/api/students");
